@@ -87,24 +87,9 @@ int main(int argc, const char *argv[])
         }else if (detectorType.compare("HARRIS") == 0)
         {
             detKeypointsHarris(keypoints, imgGray, false);
-        }else if (detectorType.compare("FAST") == 0)
-        {
-            detKeypointsFast(keypoints, imgGray, false);
-        }else if (detectorType.compare("BRISK") == 0)
-        {
-            detKeypointsBrisk(keypoints, imgGray, false);
-        }else if (detectorType.compare("ORB") == 0)
-        {
-            detKeypointsOrb(keypoints, imgGray, false);
-        }else if (detectorType.compare("AKAZE") == 0)
-        {
-            detKeypointsAkaze(keypoints, imgGray, false);
-        }else if (detectorType.compare("SIFT") == 0)
-        {
-            detKeypointsSift(keypoints, imgGray, false);
         }else
         {
-            std::cout<< " DETECTOR UNKNOWN" << std::endl;
+            detKeypointsModern(keypoints, imgGray, detectorType, true);
         }
         //// EOF STUDENT ASSIGNMENT
 
@@ -133,7 +118,7 @@ int main(int argc, const char *argv[])
         {
             int maxKeypoints = 50;
 
-            if (detectorType.compare("SHITOMASI") == 0)
+            if (detectorType.compare("BRISK") == 0)
             { // there is no response info, so keep the first 50 as they are sorted in descending quality order
                 keypoints.erase(keypoints.begin() + maxKeypoints, keypoints.end());
             }
@@ -152,7 +137,7 @@ int main(int argc, const char *argv[])
         //// -> BRIEF, ORB, FREAK, AKAZE, SIFT
 
         cv::Mat descriptors;
-        string descriptorType = "BRISK"; // BRIEF, ORB, FREAK, AKAZE, SIFT
+        string descriptorType = "SIFT"; // BRIEF, ORB, FREAK, AKAZE, SIFT
         descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
         //// EOF STUDENT ASSIGNMENT
 
@@ -167,9 +152,9 @@ int main(int argc, const char *argv[])
             /* MATCH KEYPOINT DESCRIPTORS */
 
             vector<cv::DMatch> matches;
-            string matcherType = "MAT_BF";        // MAT_BF, MAT_FLANN
+            string matcherType = "MAT_FLANN";        // MAT_BF, MAT_FLANN
             string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
-            string selectorType = "SEL_NN";       // SEL_NN, SEL_KNN
+            string selectorType = "SEL_KNN";       // SEL_NN, SEL_KNN
 
             //// STUDENT ASSIGNMENT
             //// TASK MP.5 -> add FLANN matching in file matching2D.cpp
