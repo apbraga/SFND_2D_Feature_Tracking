@@ -12,18 +12,21 @@
 #include <opencv2/features2d.hpp>
 #include <opencv2/xfeatures2d.hpp>
 #include <opencv2/xfeatures2d/nonfree.hpp>
-
+#include "benchmark.h"
 #include "dataStructures.h"
 #include "matching2D.hpp"
 
 using namespace std;
 
 /* MAIN PROGRAM */
-int main(int argc, const char *argv[])
+vector<int> get_data(string detectorType,string descriptorType,string matcherType,string selectorType)
 {
 
     /* INIT VARIABLES AND DATA STRUCTURES */
-
+    int total_keypoints = 0;
+    int total_matches = 0;
+    int total_time = 0;
+    double t;
     // data location
     string dataPath = "../";
 
@@ -75,12 +78,12 @@ int main(int argc, const char *argv[])
 
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
-        string detectorType = "SIFT";
+        //string detectorType = "SIFT";
 
         //// STUDENT ASSIGNMENT
         //// TASK MP.2 -> add the following keypoint detectors in file matching2D.cpp and enable string-based selection based on detectorType
         //// -> HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
-
+        t = (double)cv::getTickCount();
         if (detectorType.compare("SHITOMASI") == 0)
         {
             detKeypointsShiTomasi(keypoints, imgGray, false);
@@ -92,7 +95,8 @@ int main(int argc, const char *argv[])
             detKeypointsModern(keypoints, imgGray, detectorType, true);
         }
         //// EOF STUDENT ASSIGNMENT
-
+        t = 1000*((double)cv::getTickCount() - t) / cv::getTickFrequency();
+        total_time += (int) t;
         //// STUDENT ASSIGNMENT
         //// TASK MP.3 -> only keep keypoints on the preceding vehicle
 
@@ -109,6 +113,7 @@ int main(int argc, const char *argv[])
             }
             keypoints = keypoints_filtered;
         }
+        total_keypoints += keypoints.size();
 
         //// EOF STUDENT ASSIGNMENT
 
@@ -137,7 +142,7 @@ int main(int argc, const char *argv[])
         //// -> BRIEF, ORB, FREAK, AKAZE, SIFT
 
         cv::Mat descriptors;
-        string descriptorType = "SIFT"; // BRIEF, ORB, FREAK, AKAZE, SIFT
+        //string descriptorType = "SIFT"; // BRIEF, ORB, FREAK, AKAZE, SIFT
         descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
         //// EOF STUDENT ASSIGNMENT
 
@@ -152,20 +157,22 @@ int main(int argc, const char *argv[])
             /* MATCH KEYPOINT DESCRIPTORS */
 
             vector<cv::DMatch> matches;
-            string matcherType = "MAT_FLANN";        // MAT_BF, MAT_FLANN
-            string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
-            string selectorType = "SEL_KNN";       // SEL_NN, SEL_KNN
+            //string matcherType = "MAT_FLANN";        // MAT_BF, MAT_FLANN
+            //string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
+            //string selectorType = "SEL_KNN";       // SEL_NN, SEL_KNN
 
             //// STUDENT ASSIGNMENT
             //// TASK MP.5 -> add FLANN matching in file matching2D.cpp
             //// TASK MP.6 -> add KNN match selection and perform descriptor distance ratio filtering with t=0.8 in file matching2D.cpp
-
+            t = (double)cv::getTickCount();
             matchDescriptors((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
                              (dataBuffer.end() - 2)->descriptors, (dataBuffer.end() - 1)->descriptors,
                              matches, descriptorType, matcherType, selectorType);
-
+            t = 1000* ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+            total_time += (int) t;
+            total_matches += matches.size();
             //// EOF STUDENT ASSIGNMENT
-
+            
             // store matches in current data frame
             (dataBuffer.end() - 1)->kptMatches = matches;
 
@@ -193,5 +200,46 @@ int main(int argc, const char *argv[])
 
     } // eof loop over all images
 
-    return 0;
+    return {total_keypoints, total_matches, total_time};
+}
+
+int main(int argc, const char *argv[]){
+
+    std::vector<string> detectors = {"HARRIS", "FAST", "BRISK", "ORB", "AKAZE", "SIFT"};
+    std::vector<string> descriptors = {"BRIEF", "ORB", "FREAK", "AKAZE", "SIFT"};
+    std::vector<string> matchers = {"MAT_BF", "MAT_FLANN"};
+    //std::vector<string> descriptor_types = {"DES_BINARY","DES_HOG"};
+    std::vector<string> selectors = {"SEL_NN","SEL_KNN"};
+
+    std::vector<Benchmark> bench_results;
+
+    for(auto detector:detectors){
+        for(auto descriptor:descriptors){
+            for(auto matcher : matchers){
+                //for(auto descriptor_type: descriptor_types){
+                    for(auto selector:selectors){
+                        std::vector<int> result;
+                        try{
+                            result = get_data(detector,descriptor,matcher, selector);
+                        }catch(...){
+                            result = {0,0,0};
+                        }
+
+                        Benchmark bench_result;
+                        bench_result.detector = detector;
+                        bench_result.descriptor = descriptor;
+                        bench_result.matcher = matcher;
+                        bench_result.selector = selector;
+                        bench_result.total_keypoints = result[0];
+                        bench_result.total_matches = result[1];
+                        bench_result.total_time = result[2];
+                        bench_results.push_back(bench_result);
+                    }
+               //}
+            }
+        }
+    }
+
+
+
 }
