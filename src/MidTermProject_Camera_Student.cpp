@@ -12,7 +12,6 @@
 #include <opencv2/features2d.hpp>
 #include <opencv2/xfeatures2d.hpp>
 #include <opencv2/xfeatures2d/nonfree.hpp>
-#include "benchmark.h"
 #include "dataStructures.h"
 #include "matching2D.hpp"
 
@@ -72,7 +71,7 @@ vector<int> get_data(string detectorType,string descriptorType,string matcherTyp
         //std::cout << "SIZE = " << dataBuffer.size() << std::endl;
 
         //// EOF STUDENT ASSIGNMENT
-        cout << "#1 : LOAD IMAGE INTO BUFFER done" << endl;
+        //cout << "#1 : LOAD IMAGE INTO BUFFER done" << endl;
 
         /* DETECT IMAGE KEYPOINTS */
 
@@ -92,10 +91,10 @@ vector<int> get_data(string detectorType,string descriptorType,string matcherTyp
             detKeypointsHarris(keypoints, imgGray, false);
         }else
         {
-            detKeypointsModern(keypoints, imgGray, detectorType, true);
+            detKeypointsModern(keypoints, imgGray, detectorType, false);
         }
         //// EOF STUDENT ASSIGNMENT
-        t = 1000*((double)cv::getTickCount() - t) / cv::getTickFrequency();
+        t = 1000000*((double)cv::getTickCount() - t) / cv::getTickFrequency();
         total_time += (int) t;
         //// STUDENT ASSIGNMENT
         //// TASK MP.3 -> only keep keypoints on the preceding vehicle
@@ -133,7 +132,7 @@ vector<int> get_data(string detectorType,string descriptorType,string matcherTyp
 
         // push keypoints and descriptor for current frame to end of data buffer
         (dataBuffer.end() - 1)->keypoints = keypoints;
-        cout << "#2 : DETECT KEYPOINTS done" << endl;
+        //cout << "#2 : DETECT KEYPOINTS done" << endl;
 
         /* EXTRACT KEYPOINT DESCRIPTORS */
 
@@ -149,7 +148,7 @@ vector<int> get_data(string detectorType,string descriptorType,string matcherTyp
         // push descriptors for current frame to end of data buffer
         (dataBuffer.end() - 1)->descriptors = descriptors;
 
-        cout << "#3 : EXTRACT DESCRIPTORS done" << endl;
+        //cout << "#3 : EXTRACT DESCRIPTORS done" << endl;
 
         if (dataBuffer.size() > 1) // wait until at least two images have been processed
         {
@@ -168,7 +167,7 @@ vector<int> get_data(string detectorType,string descriptorType,string matcherTyp
             matchDescriptors((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
                              (dataBuffer.end() - 2)->descriptors, (dataBuffer.end() - 1)->descriptors,
                              matches, descriptorType, matcherType, selectorType);
-            t = 1000* ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+            t = 1000000* ((double)cv::getTickCount() - t) / cv::getTickFrequency();
             total_time += (int) t;
             total_matches += matches.size();
             //// EOF STUDENT ASSIGNMENT
@@ -176,10 +175,10 @@ vector<int> get_data(string detectorType,string descriptorType,string matcherTyp
             // store matches in current data frame
             (dataBuffer.end() - 1)->kptMatches = matches;
 
-            cout << "#4 : MATCH KEYPOINT DESCRIPTORS done" << endl;
+            //cout << "#4 : MATCH KEYPOINT DESCRIPTORS done" << endl;
 
             // visualize matches between current and previous image
-            bVis = true;
+            bVis = false;
             if (bVis)
             {
                 cv::Mat matchImg = ((dataBuffer.end() - 1)->cameraImg).clone();
@@ -205,14 +204,17 @@ vector<int> get_data(string detectorType,string descriptorType,string matcherTyp
 
 int main(int argc, const char *argv[]){
 
-    std::vector<string> detectors = {"HARRIS", "FAST", "BRISK", "ORB", "AKAZE", "SIFT"};
-    std::vector<string> descriptors = {"BRIEF", "ORB", "FREAK", "AKAZE", "SIFT"};
+    std::vector<string> detectors = {"SHITOMASI","HARRIS", "FAST", "BRISK", "ORB", "AKAZE", "SIFT"};
+    std::vector<string> descriptors = {"BRISK","BRIEF", "ORB", "FREAK", "AKAZE", "SIFT"};
     std::vector<string> matchers = {"MAT_BF", "MAT_FLANN"};
     //std::vector<string> descriptor_types = {"DES_BINARY","DES_HOG"};
     std::vector<string> selectors = {"SEL_NN","SEL_KNN"};
-
-    std::vector<Benchmark> bench_results;
-
+    std::ofstream myfile;
+    myfile.open("benchmark.csv");
+    myfile << "DETECTOR,DESCRIPTOR,MATCHER,SELECTOR,TOTAL_KEYPOINTS,TOTAL_MATCHES,TOTAL_TIME,MATCHES/TIME\n";
+    
+    double count = 0;
+    double total = detectors.size() * descriptors.size () * matchers.size() * selectors.size();
     for(auto detector:detectors){
         for(auto descriptor:descriptors){
             for(auto matcher : matchers){
@@ -221,25 +223,20 @@ int main(int argc, const char *argv[]){
                         std::vector<int> result;
                         try{
                             result = get_data(detector,descriptor,matcher, selector);
-                        }catch(...){
-                            result = {0,0,0};
-                        }
+                            myfile << detector << "," << descriptor << "," << matcher << "," << selector << "," << result[0] << "," << result[1] << "," << (result[2] > 0 ? result[2]/1000 : 1) << "," <<  floor(result[1]/(result[2]/1000.0))<< 
+                "," << "\n";
 
-                        Benchmark bench_result;
-                        bench_result.detector = detector;
-                        bench_result.descriptor = descriptor;
-                        bench_result.matcher = matcher;
-                        bench_result.selector = selector;
-                        bench_result.total_keypoints = result[0];
-                        bench_result.total_matches = result[1];
-                        bench_result.total_time = result[2];
-                        bench_results.push_back(bench_result);
+                        }catch(...){
+                            myfile << detector << "," << descriptor << "," << matcher << "," << selector << "," << "Invalid combination" << "\n";
+                        }
+                        count++;
+
                     }
                //}
+               std::cout << "[ " << count << " out of " << total << " ]" << std::endl;
             }
         }
     }
-
-
+    myfile.close();
 
 }
